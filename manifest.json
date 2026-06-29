@@ -1,0 +1,24 @@
+{
+  "name": "Cotizador 3D — Alebri Studio",
+  "short_name": "Cotizador 3D",
+  "description": "Calculadora de cotizaciones para impresión 3D",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0e0e0e",
+  "theme_color": "#FF4D1C",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Cotizador 3D — Alebri Studio</title>
+  <meta name="description" content="Calculadora de cotizaciones para impresión 3D · Alebri Studio · Puebla, México">
+  <meta name="theme-color" content="#111111">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --orange: #FF4D1C;
+      --orange-dark: #cc3a12;
+      --bg: #0e0e0e;
+      --surface: #181818;
+      --surface2: #202020;
+      --border: #272727;
+      --border2: #2f2f2f;
+      --text: #f0f0f0;
+      --muted: #888;
+      --muted2: #555;
+      --green: #22c55e;
+      --yellow: #fb923c;
+      --red: #ef4444;
+      --radius: 10px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Montserrat', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── HEADER ─────────────────────────────── */
+    .header {
+      background: #111;
+      border-bottom: 1px solid var(--border);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      width: 34px; height: 34px;
+      background: var(--orange);
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .logo svg { display: block; }
+
+    .header-text h1 { font-size: 14px; font-weight: 800; color: #fff; letter-spacing: 0.02em; }
+    .header-text p  { font-size: 10px; color: var(--muted2); font-weight: 500; margin-top: 1px; }
+
+    .header-anim {
+      margin-left: auto;
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      height: 26px;
+    }
+
+    .layer-bar {
+      width: 5px;
+      background: var(--orange);
+      border-radius: 1px;
+      animation: layerPulse 1.4s ease-in-out infinite alternate;
+      opacity: 0.85;
+    }
+    @keyframes layerPulse {
+      from { transform: scaleY(0.3); opacity: 0.3; }
+      to   { transform: scaleY(1);   opacity: 1; }
+    }
+
+    /* ── TABS ───────────────────────────────── */
+    .tabs {
+      background: #111;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      padding: 0 20px;
+      gap: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+
+    .tab {
+      padding: 11px 16px;
+      font-size: 11px; font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--muted2);
+      background: none; border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      white-space: nowrap;
+      font-family: inherit;
+      transition: color .15s;
+    }
+    .tab:hover  { color: var(--muted); }
+    .tab.active { color: var(--orange); border-bottom-color: var(--orange); }
+
+    /* ── LAYOUT ─────────────────────────────── */
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 20px;
+      padding: 20px;
+      align-items: start;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    @media (max-width: 768px) {
+      .main { grid-template-columns: 1fr; }
+      .sidebar { order: -1; }
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── CARDS ──────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      margin-bottom: 14px;
+    }
+
+    .section-label {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--muted2);
+      margin-bottom: 12px;
+    }
+
+    /* ── FIELDS ─────────────────────────────── */
+    .field { margin-bottom: 14px; }
+    .field:last-child { margin-bottom: 0; }
+
+    .field label {
+      display: block;
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .field input[type="text"],
+    .field input[type="number"],
+    .field select {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border2);
+      border-radius: 7px;
+      color: var(--text);
+      padding: 9px 12px;
+      font-size: 13px;
+      font-family: inherit;
+      font-weight: 500;
+      transition: border-color .15s;
+      -moz-appearance: textfield;
+      appearance: none;
+    }
+    .field input[type="number"]::-webkit-inner-spin-button,
+    .field input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .field input:focus, .field select:focus { outline: none; border-color: var(--orange); }
+    .field select option { background: var(--surface); }
+
+    .field-hint {
+      font-size: 10px; color: var(--muted2);
+      margin-top: 4px; font-weight: 500;
+    }
+
+    .field-row  { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .field-row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+    /* ── TOGGLES ─────────────────────────────── */
+    .toggle-row {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .toggle-row:last-of-type { border-bottom: none; }
+    .toggle-info .tl { font-size: 13px; font-weight: 500; color: #ccc; }
+    .toggle-info .ts { font-size: 11px; color: var(--muted2); margin-top: 2px; }
+
+    .tog {
+      width: 40px; height: 22px;
+      background: var(--border2);
+      border-radius: 11px;
+      border: none; cursor: pointer;
+      position: relative;
+      flex-shrink: 0;
+      transition: background .2s;
+    }
+    .tog::after {
+      content: '';
+      position: absolute;
+      width: 16px; height: 16px;
+      background: #fff; border-radius: 50%;
+      top: 3px; left: 3px;
+      transition: transform .2s;
+    }
+    .tog.on { background: var(--orange); }
+    .tog.on::after { transform: translateX(18px); }
+
+    .toggle-extra { display: none; padding: 12px 0 4px; }
+    .toggle-extra.open { display: block; }
+
+    /* ── PRESETS ─────────────────────────────── */
+    .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+
+    .preset-btn {
+      background: var(--bg);
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      padding: 11px 12px;
+      cursor: pointer; text-align: left;
+      font-family: inherit;
+      transition: border-color .15s, background .15s;
+    }
+    .preset-btn:hover { border-color: var(--orange); background: #1c1008; }
+    .preset-btn .pn { font-size: 12px; font-weight: 600; color: #ccc; }
+    .preset-btn .pd { font-size: 10px; color: var(--muted2); margin-top: 2px; }
+
+    /* ── SLIDER ──────────────────────────────── */
+    .slider-wrap { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+
+    input[type="range"] {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 4px;
+      background: var(--border2);
+      border-radius: 2px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px; height: 18px;
+      background: var(--orange);
+      border-radius: 50%; cursor: pointer;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 18px; height: 18px;
+      background: var(--orange);
+      border-radius: 50%; border: none; cursor: pointer;
+    }
+
+    .slider-val {
+      font-size: 13px; font-weight: 700;
+      color: var(--orange); min-width: 40px; text-align: right;
+    }
+
+    /* ── COTIZACIÓN SIDEBAR ──────────────────── */
+    .sidebar { position: sticky; top: 74px; }
+
+    .cot-header {
+      background: var(--orange);
+      border-radius: var(--radius) var(--radius) 0 0;
+      padding: 16px 18px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .cot-header-text h2 { font-size: 13px; font-weight: 800; color: #fff; }
+    .cot-header-text p  { font-size: 11px; color: rgba(255,255,255,.7); margin-top: 1px; }
+
+    .cot-body {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 var(--radius) var(--radius);
+      padding: 16px;
+    }
+
+    .cot-line {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+    }
+    .cot-line:last-of-type { border-bottom: none; }
+    .ck { color: var(--muted); font-weight: 500; }
+    .cv { color: #ddd; font-weight: 600; font-size: 13px; }
+    .cv.acc { color: var(--orange); }
+    .cv.pos { color: var(--green); }
+
+    hr.div { border: none; border-top: 1px solid var(--border2); margin: 10px 0; }
+
+    .total-wrap { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+    .total-label { font-size: 11px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+    .total-num { font-size: 28px; font-weight: 800; color: #fff; letter-spacing: -0.02em; }
+    .total-cur { font-size: 12px; color: var(--muted2); font-weight: 600; margin-left: 3px; }
+
+    /* rentabilidad */
+    .rent-wrap { margin: 10px 0 14px; }
+    .rent-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+    .rent-label { font-size: 10px; color: var(--muted2); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+    .chip {
+      font-size: 9px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+      padding: 3px 8px; border-radius: 4px;
+    }
+    .chip-ok   { background: rgba(34,197,94,.12);  color: var(--green); }
+    .chip-warn { background: rgba(251,146,60,.12); color: var(--yellow); }
+    .chip-bad  { background: rgba(239,68,68,.12);  color: var(--red); }
+
+    .rent-bar { height: 4px; background: var(--border2); border-radius: 2px; overflow: hidden; }
+    .rent-fill { height: 100%; background: var(--orange); border-radius: 2px; transition: width .3s; }
+
+    /* botones */
+    .btn {
+      width: 100%;
+      border-radius: 8px;
+      padding: 12px;
+      font-family: inherit; font-size: 12px; font-weight: 700;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      cursor: pointer;
+      transition: background .15s, transform .1s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      border: none;
+    }
+    .btn:active { transform: scale(.97); }
+
+    .btn-primary { background: var(--orange); color: #fff; margin-top: 12px; }
+    .btn-primary:hover { background: var(--orange-dark); }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--border2);
+      color: var(--muted);
+      margin-top: 8px;
+    }
+    .btn-secondary:hover { border-color: #444; color: #ccc; }
+
+    .btn-pdf {
+      background: transparent;
+      border: 1px solid rgba(255,77,28,.35);
+      color: var(--orange);
+      margin-top: 8px;
+    }
+    .btn-pdf:hover { background: rgba(255,77,28,.06); }
+
+    /* wa preview */
+    .wa-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 10px;
+      font-size: 11px;
+      color: #7a7a7a;
+      line-height: 1.85;
+      white-space: pre-wrap;
+      font-family: 'Courier New', monospace;
+      max-height: 200px; overflow-y: auto;
+    }
+
+    .hidden { display: none !important; }
+
+    /* ── HISTORIAL ───────────────────────────── */
+    .h-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: border-color .15s;
+    }
+    .h-item:hover { border-color: var(--orange); }
+    .h-name { font-size: 12px; font-weight: 700; color: #ddd; }
+    .h-sub  { font-size: 10px; color: var(--muted2); margin-top: 3px; }
+    .h-price { font-size: 15px; font-weight: 800; color: var(--orange); }
+
+    /* ── CONFIG ──────────────────────────────── */
+    .info-pill {
+      background: rgba(255,77,28,.07);
+      border: 1px solid rgba(255,77,28,.18);
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-top: 4px;
+    }
+    .info-pill p { font-size: 11px; color: #777; line-height: 1.7; }
+    .info-pill strong { color: var(--orange); }
+
+    /* ── TOAST ───────────────────────────────── */
+    #toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: #1e1e1e; border: 1px solid var(--border2);
+      border-radius: 8px; padding: 10px 18px;
+      font-size: 12px; font-weight: 600; color: #ddd;
+      z-index: 999; opacity: 0;
+      transition: opacity .2s;
+      pointer-events: none;
+    }
+    #toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="logo">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+      <path d="M2 17l10 5 10-5"/>
+      <path d="M2 12l10 5 10-5"/>
+    </svg>
+  </div>
+  <div class="header-text">
+    <h1>Cotizador 3D</h1>
+    <p>Alebri Studio · Puebla, México</p>
+  </div>
+  <div class="header-anim" id="layerAnim"></div>
+</header>
+
+<!-- TABS -->
+<nav class="tabs">
+  <button class="tab active" onclick="switchTab('calcular', this)">Calcular</button>
+  <button class="tab" onclick="switchTab('config', this)">Configuración</button>
+  <button class="tab" onclick="switchTab('historial', this)">Historial</button>
+</nav>
+
+<!-- ═══════════════ TAB: CALCULAR ═══════════════ -->
+<div class="tab-content active" id="tab-calcular">
+  <div class="main">
+    <!-- LEFT PANEL -->
+    <div>
+      <div class="section-label">Pieza</div>
+      <div class="card">
+        <div class="field">
+          <label>Nombre / descripción</label>
+          <input type="text" id="nombrePieza" placeholder="ej. Base soporte logo empresa" oninput="calcular()">
+        </div>
+        <div class="field">
+          <label>Material</label>
+          <select id="material" onchange="onMaterialChange()">
+            <option value="PLA"    data-c="0.25">PLA · $0.25/g</option>
+            <option value="PETG"   data-c="0.30">PETG · $0.30/g</option>
+            <option value="ABS"    data-c="0.28">ABS · $0.28/g</option>
+            <option value="TPU"    data-c="0.45">TPU (flexible) · $0.45/g</option>
+            <option value="Resina" data-c="0.60">Resina · $0.60/g</option>
+            <option value="CUSTOM">Costo personalizado</option>
+          </select>
+        </div>
+        <div class="field hidden" id="fieldCustom">
+          <label>Costo por gramo (MXN)</label>
+          <input type="number" id="costoGramo" value="0.25" min="0.01" step="0.01" oninput="calcular()">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Peso estimado (g)</label>
+            <input type="number" id="peso" value="50" min="1" oninput="calcular()">
+          </div>
+          <div class="field">
+            <label>Tiempo impresión (h)</label>
+            <input type="number" id="tiempo" value="3" min="0.1" step="0.1" oninput="calcular()">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Cantidad (piezas)</label>
+            <input type="number" id="cantidad" value="1" min="1" oninput="calcular()">
+          </div>
+          <div class="field">
+            <label>Descuento volumen (%)</label>
+            <input type="number" id="descPct" value="0" min="0" max="50" oninput="calcular()">
+          </div>
+        </div>
+      </div>
+
+      <!-- EXTRAS -->
+      <div class="section-label">Servicios adicionales</div>
+      <div class="card">
+        <!-- Postprocesado -->
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="tl">Postprocesado</div>
+            <div class="ts">Lijado, pintura, acabado especial</div>
+          </div>
+          <button class="tog" id="togPost" onclick="toggle('Post')"></button>
+        </div>
+        <div class="toggle-extra" id="extraPost">
+          <div class="field">
+            <label>Costo (MXN)</label>
+            <input type="number" id="vPost" value="80" min="0" oninput="calcular()">
+          </div>
+        </div>
+        <!-- Envío -->
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="tl">Envío</div>
+            <div class="ts">Mensajería o entrega a domicilio</div>
+          </div>
+          <button class="tog" id="togEnvio" onclick="toggle('Envio')"></button>
+        </div>
+        <div class="toggle-extra" id="extraEnvio">
+          <div class="field">
+            <label>Costo (MXN)</label>
+            <input type="number" id="vEnvio" value="100" min="0" oninput="calcular()">
+          </div>
+        </div>
+        <!-- Diseño -->
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="tl">Diseño 3D / Modelado</div>
+            <div class="ts">Cobro por creación del archivo</div>
+          </div>
+          <button class="tog" id="togDiseno" onclick="toggle('Diseno')"></button>
+        </div>
+        <div class="toggle-extra" id="extraDiseno">
+          <div class="field">
+            <label>Costo (MXN)</label>
+            <input type="number" id="vDiseno" value="300" min="0" oninput="calcular()">
+          </div>
+        </div>
+        <!-- Urgencia -->
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="tl">Cargo por urgencia</div>
+            <div class="ts">Porcentaje adicional al subtotal</div>
+          </div>
+          <button class="tog" id="togUrg" onclick="toggle('Urg')"></button>
+        </div>
+        <div class="toggle-extra" id="extraUrg">
+          <div class="field">
+            <label>Porcentaje adicional</label>
+            <div class="slider-wrap">
+              <input type="range" id="pctUrg" min="5" max="50" value="20" step="5"
+                     oninput="document.getElementById('lblUrg').textContent=this.value+'%';calcular()">
+              <span class="slider-val" id="lblUrg">20%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PRESETS -->
+      <div class="section-label">Presets rápidos</div>
+      <div class="preset-grid">
+        <button class="preset-btn" onclick="preset('llavero')">
+          <div class="pn">Llavero / figura</div>
+          <div class="pd">PLA · 15g · 1h</div>
+        </button>
+        <button class="preset-btn" onclick="preset('soporte')">
+          <div class="pn">Soporte / bracket</div>
+          <div class="pd">PLA · 60g · 4h</div>
+        </button>
+        <button class="preset-btn" onclick="preset('pieza')">
+          <div class="pn">Pieza mecánica</div>
+          <div class="pd">PETG · 120g · 8h</div>
+        </button>
+        <button class="preset-btn" onclick="preset('proto')">
+          <div class="pn">Prototipo grande</div>
+          <div class="pd">PLA · 250g · 20h</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- RIGHT: COTIZACIÓN -->
+    <div class="sidebar">
+      <div class="cot-header">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="5" y="2" width="14" height="20" rx="2"/>
+          <line x1="9" y1="7" x2="15" y2="7"/>
+          <line x1="9" y1="11" x2="15" y2="11"/>
+          <line x1="9" y1="15" x2="12" y2="15"/>
+        </svg>
+        <div class="cot-header-text">
+          <h2>Cotización</h2>
+          <p id="rNombre">—</p>
+        </div>
+      </div>
+      <div class="cot-body">
+        <div class="cot-line"><span class="ck">Material (<span id="rMat">PLA</span>)</span><span class="cv" id="rCMat">$0.00</span></div>
+        <div class="cot-line"><span class="ck">Hora máquina (<span id="rHrs">0</span>h)</span><span class="cv" id="rCMaq">$0.00</span></div>
+        <div class="cot-line hidden" id="lPost"><span class="ck">Postprocesado</span><span class="cv acc" id="rPost">$0.00</span></div>
+        <div class="cot-line hidden" id="lEnvio"><span class="ck">Envío</span><span class="cv acc" id="rEnvio">$0.00</span></div>
+        <div class="cot-line hidden" id="lDiseno"><span class="ck">Diseño 3D</span><span class="cv acc" id="rDiseno">$0.00</span></div>
+        <div class="cot-line hidden" id="lUrg"><span class="ck">Urgencia (<span id="rPctUrg">20</span>%)</span><span class="cv acc" id="rUrg">$0.00</span></div>
+        <hr class="div">
+        <div class="cot-line"><span class="ck">Costo base</span><span class="cv" id="rBase">$0.00</span></div>
+        <div class="cot-line"><span class="ck">Margen (<span id="rPctM">60</span>%)</span><span class="cv" id="rMargen">$0.00</span></div>
+        <div class="cot-line hidden" id="lDesc"><span class="ck">Descuento vol. (<span id="rPctD">0</span>%)</span><span class="cv pos" id="rDesc">-$0.00</span></div>
+        <div class="cot-line"><span class="ck">Precio unitario</span><span class="cv" id="rUnit">$0.00</span></div>
+        <div class="cot-line"><span class="ck">Cantidad</span><span class="cv" id="rCant">1 pza</span></div>
+        <hr class="div">
+        <div class="total-wrap">
+          <span class="total-label">Total</span>
+          <div><span class="total-num" id="rTotal">$0</span><span class="total-cur">MXN</span></div>
+        </div>
+        <div class="rent-wrap">
+          <div class="rent-top">
+            <span class="rent-label">Rentabilidad: <span id="rRentPct">—</span></span>
+            <span class="chip" id="rChip">—</span>
+          </div>
+          <div class="rent-bar"><div class="rent-fill" id="rBar" style="width:0%"></div></div>
+        </div>
+        <button class="btn btn-primary" onclick="guardar()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Guardar cotización
+        </button>
+        <button class="btn btn-pdf" onclick="exportarPDF()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Exportar PDF
+        </button>
+        <button class="btn btn-secondary" onclick="generarWA()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Mensaje WhatsApp
+        </button>
+        <div id="waPreview" class="hidden">
+          <div class="wa-box" id="waText"></div>
+          <button class="btn btn-secondary" onclick="copiarWA()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copiar mensaje
+          </button>
+        </div>
+      </div>
+    </div><!-- /sidebar -->
+  </div><!-- /main -->
+</div><!-- /tab-calcular -->
+
+<!-- ═══════════════ TAB: CONFIG ═══════════════ -->
+<div class="tab-content" id="tab-config">
+  <div class="main" style="grid-template-columns:1fr;max-width:580px">
+    <div>
+      <div class="section-label">Parámetros de producción</div>
+      <div class="card">
+        <div class="field">
+          <label>Costo hora máquina (MXN/h)</label>
+          <input type="number" id="cfgHora" value="35" min="1" oninput="calcular()">
+          <div class="field-hint">Incluye electricidad + desgaste de piezas</div>
+        </div>
+        <div class="field">
+          <label>Margen de ganancia</label>
+          <div class="slider-wrap">
+            <input type="range" id="cfgMargen" min="10" max="200" value="60" step="5"
+                   oninput="document.getElementById('lblMargen').textContent=this.value+'%';calcular()">
+            <span class="slider-val" id="lblMargen">60%</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>Mínimo de cobro (MXN)</label>
+          <input type="number" id="cfgMin" value="80" min="0" oninput="calcular()">
+          <div class="field-hint">Ninguna cotización queda por debajo de este valor</div>
+        </div>
+      </div>
+
+      <div class="section-label">Tu estudio</div>
+      <div class="card">
+        <div class="field">
+          <label>Nombre del estudio</label>
+          <input type="text" id="cfgNombre" value="Alebri Studio" oninput="calcular()">
+        </div>
+        <div class="field">
+          <label>WhatsApp (con código de país)</label>
+          <input type="text" id="cfgWA" value="522217522601">
+        </div>
+        <div class="field">
+          <label>Ciudad</label>
+          <input type="text" id="cfgCiudad" value="Puebla, México">
+        </div>
+      </div>
+
+      <div class="info-pill">
+        <p>Fórmula: <strong>(material + máquina + extras) × (1 + margen%)</strong> con descuento por volumen y mínimo de cobro aplicado al precio unitario.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ TAB: HISTORIAL ═══════════════ -->
+<div class="tab-content" id="tab-historial">
+  <div class="main" style="grid-template-columns:1fr;max-width:680px">
+    <div>
+      <div class="section-label">Cotizaciones guardadas</div>
+      <div id="histList">
+        <div style="text-align:center;padding:32px 0;font-size:12px;color:var(--muted2)">
+          Aún no hay cotizaciones guardadas.<br>Calcula y toca "Guardar cotización".
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+/* ──────────────────────────────────────────────
+   STATE
+────────────────────────────────────────────── */
+var tog = { Post:false, Envio:false, Diseno:false, Urg:false };
+var historial = JSON.parse(localStorage.getItem('cotHistorial') || '[]');
+var cxg = 0.25; // costo x gramo actual
+var lastCalc = null;
+
+/* ──────────────────────────────────────────────
+   ANIMACIÓN HEADER
+────────────────────────────────────────────── */
+(function(){
+  var el = document.getElementById('layerAnim');
+  var heights = [35,55,75,100,80,60,45];
+  heights.forEach(function(h,i){
+    var bar = document.createElement('div');
+    bar.className = 'layer-bar';
+    bar.style.height = h + '%';
+    bar.style.animationDelay = (i * 0.12) + 's';
+    el.appendChild(bar);
+  });
+})();
+
+/* ──────────────────────────────────────────────
+   TABS
+────────────────────────────────────────────── */
+function switchTab(name, el) {
+  document.querySelectorAll('.tab-content').forEach(function(t){ t.classList.remove('active'); });
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
+  document.getElementById('tab-' + name).classList.add('active');
+  if (el) el.classList.add('active');
+  if (name === 'historial') renderHistorial();
+}
+
+/* ──────────────────────────────────────────────
+   TOGGLES
+────────────────────────────────────────────── */
+function toggle(name) {
+  tog[name] = !tog[name];
+  var btn = document.getElementById('tog' + name);
+  var ex  = document.getElementById('extra' + name);
+  btn.classList.toggle('on', tog[name]);
+  ex.classList.toggle('open', tog[name]);
+  calcular();
+}
+
+/* ──────────────────────────────────────────────
+   MATERIAL
+────────────────────────────────────────────── */
+function onMaterialChange() {
+  var sel = document.getElementById('material');
+  var opt = sel.options[sel.selectedIndex];
+  var isCustom = sel.value === 'CUSTOM';
+  document.getElementById('fieldCustom').classList.toggle('hidden', !isCustom);
+  if (!isCustom) {
+    cxg = parseFloat(opt.getAttribute('data-c')) || 0.25;
+  } else {
+    cxg = parseFloat(document.getElementById('costoGramo').value) || 0.25;
+  }
+  calcular();
+}
+
+/* ──────────────────────────────────────────────
+   PRESETS
+────────────────────────────────────────────── */
+function preset(k) {
+  var p = {
+    llavero:{ nombre:'Llavero / figura pequeña', peso:15,  tiempo:1,  mat:'PLA'  },
+    soporte:{ nombre:'Soporte / bracket',         peso:60,  tiempo:4,  mat:'PLA'  },
+    pieza:  { nombre:'Pieza mecánica',            peso:120, tiempo:8,  mat:'PETG' },
+    proto:  { nombre:'Prototipo grande',           peso:250, tiempo:20, mat:'PLA'  }
+  }[k];
+  if (!p) return;
+  document.getElementById('nombrePieza').value = p.nombre;
+  document.getElementById('peso').value = p.peso;
+  document.getElementById('tiempo').value = p.tiempo;
+  var sel = document.getElementById('material');
+  for (var i=0; i<sel.options.length; i++) {
+    if (sel.options[i].value === p.mat) { sel.selectedIndex = i; break; }
+  }
+  onMaterialChange();
+}
+
+/* ──────────────────────────────────────────────
+   CALCULAR
+────────────────────────────────────────────── */
+function calcular() {
+  if (document.getElementById('material').value === 'CUSTOM') {
+    cxg = parseFloat(document.getElementById('costoGramo').value) || 0.25;
+  }
+
+  var peso     = parseFloat(document.getElementById('peso').value)    || 0;
+  var tiempo   = parseFloat(document.getElementById('tiempo').value)  || 0;
+  var cant     = parseInt(document.getElementById('cantidad').value)  || 1;
+  var descP    = parseFloat(document.getElementById('descPct').value) || 0;
+  var hora     = parseFloat(document.getElementById('cfgHora').value) || 35;
+  var margenP  = parseInt(document.getElementById('cfgMargen').value) || 60;
+  var minimo   = parseFloat(document.getElementById('cfgMin').value)  || 0;
+
+  var cMat  = peso * cxg;
+  var cMaq  = tiempo * hora;
+
+  var postV   = tog.Post  ? (parseFloat(document.getElementById('vPost').value)  || 0) : 0;
+  var envioV  = tog.Envio ? (parseFloat(document.getElementById('vEnvio').value) || 0) : 0;
+  var disenoV = tog.Diseno? (parseFloat(document.getElementById('vDiseno').value)|| 0) : 0;
+
+  var base = cMat + cMaq + postV + envioV + disenoV;
+
+  var urgV = 0;
+  if (tog.Urg) {
+    var urgP = parseInt(document.getElementById('pctUrg').value) || 20;
+    urgV = base * urgP / 100;
+    base += urgV;
+  }
+
+  var margen  = base * margenP / 100;
+  var unit    = base + margen;
+  var descM   = unit * descP / 100;
+  unit       -= descM;
+  unit        = Math.max(unit, minimo);
+  var total   = unit * cant;
+
+  // ── DOM ──
+  var mat = document.getElementById('material').value;
+  var nombre = document.getElementById('nombrePieza').value || '—';
+  document.getElementById('rNombre').textContent = nombre;
+  document.getElementById('rMat').textContent    = mat === 'CUSTOM' ? 'Custom' : mat;
+  document.getElementById('rCMat').textContent   = fmt(cMat);
+  document.getElementById('rHrs').textContent    = tiempo.toFixed(1);
+  document.getElementById('rCMaq').textContent   = fmt(cMaq);
+
+  show('lPost',   tog.Post);   document.getElementById('rPost').textContent   = fmt(postV);
+  show('lEnvio',  tog.Envio);  document.getElementById('rEnvio').textContent  = fmt(envioV);
+  show('lDiseno', tog.Diseno); document.getElementById('rDiseno').textContent = fmt(disenoV);
+  if (tog.Urg) {
+    show('lUrg', true);
+    document.getElementById('rPctUrg').textContent = document.getElementById('pctUrg').value;
+    document.getElementById('rUrg').textContent = fmt(urgV);
+  } else { show('lUrg', false); }
+
+  document.getElementById('rBase').textContent   = fmt(base);
+  document.getElementById('rPctM').textContent   = margenP;
+  document.getElementById('rMargen').textContent = fmt(margen);
+
+  if (descP > 0) {
+    show('lDesc', true);
+    document.getElementById('rPctD').textContent = descP;
+    document.getElementById('rDesc').textContent = '-' + fmt(descM);
+  } else { show('lDesc', false); }
+
+  document.getElementById('rUnit').textContent = fmt(unit);
+  document.getElementById('rCant').textContent = cant + (cant === 1 ? ' pza' : ' pzas');
+  document.getElementById('rTotal').textContent = '$' + Math.round(total).toLocaleString('es-MX');
+
+  // rentabilidad
+  var rentPct = base > 0 ? (margen / unit * 100) : 0;
+  document.getElementById('rRentPct').textContent = rentPct.toFixed(0) + '% margen';
+  document.getElementById('rBar').style.width = Math.min(rentPct * 1.5, 100) + '%';
+  var chip = document.getElementById('rChip');
+  if (rentPct >= 35)     { chip.className='chip chip-ok';   chip.textContent='Óptimo'; }
+  else if (rentPct >= 20){ chip.className='chip chip-warn'; chip.textContent='Regular'; }
+  else                   { chip.className='chip chip-bad';  chip.textContent='Bajo'; }
+
+  lastCalc = {
+    nombre: nombre,
+    mat:  mat === 'CUSTOM' ? 'Custom' : mat,
+    peso, tiempo, cant,
+    cMat, cMaq, postV, envioV, disenoV, urgV,
+    base, margen, margenP, descP, descM,
+    unit, total,
+    rentPct: rentPct.toFixed(0),
+    fecha: new Date().toLocaleDateString('es-MX', {day:'2-digit', month:'short', year:'numeric'}),
+    ciudad: document.getElementById('cfgCiudad').value || 'Puebla, México',
+    studio: document.getElementById('cfgNombre').value || 'Alebri Studio'
+  };
+}
+
+/* ──────────────────────────────────────────────
+   GUARDAR HISTORIAL
+────────────────────────────────────────────── */
+function guardar() {
+  if (!lastCalc) return;
+  historial.unshift({ ...lastCalc, id: Date.now() });
+  if (historial.length > 50) historial.pop();
+  localStorage.setItem('cotHistorial', JSON.stringify(historial));
+  toast('✓ Cotización guardada');
+}
+
+function renderHistorial() {
+  var el = document.getElementById('histList');
+  if (!historial.length) {
+    el.innerHTML = '<div style="text-align:center;padding:32px 0;font-size:12px;color:var(--muted2)">Aún no hay cotizaciones guardadas.<br>Calcula y toca "Guardar cotización".</div>';
+    return;
+  }
+  el.innerHTML = historial.map(function(h, i) {
+    return '<div class="h-item">' +
+      '<div>' +
+        '<div class="h-name">' + (h.nombre || '—') + '</div>' +
+        '<div class="h-sub">' + h.fecha + ' · ' + h.mat + ' · ' + h.cant + ' pza(s) · ' + h.studio + '</div>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:10px">' +
+        '<span class="h-price">$' + Math.round(h.total).toLocaleString('es-MX') + '</span>' +
+        '<button onclick="borrar(' + i + ')" style="background:none;border:none;color:var(--muted2);cursor:pointer;font-size:18px;line-height:1;padding:2px 4px;" title="Eliminar">×</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function borrar(i) {
+  historial.splice(i, 1);
+  localStorage.setItem('cotHistorial', JSON.stringify(historial));
+  renderHistorial();
+}
+
+/* ──────────────────────────────────────────────
+   EXPORTAR PDF (jsPDF)
+────────────────────────────────────────────── */
+function exportarPDF() {
+  if (!lastCalc) { toast('Primero calcula una cotización'); return; }
+  var d = lastCalc;
+  var { jsPDF } = window.jspdf;
+  var doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+  var W = 210, PL = 18, PR = 18, PT = 20;
+  var CW = W - PL - PR;
+  var y = PT;
+
+  var ORANGE = [255, 77, 28];
+  var DARK   = [14, 14, 14];
+  var GRAY1  = [30, 30, 30];
+  var GRAY2  = [50, 50, 50];
+  var LIGHT  = [240, 240, 240];
+  var MID    = [160, 160, 160];
+
+  // ── Fondo oscuro completo ──
+  doc.setFillColor.apply(doc, DARK);
+  doc.rect(0, 0, W, 297, 'F');
+
+  // ── Header band ──
+  doc.setFillColor.apply(doc, GRAY1);
+  doc.rect(0, 0, W, 40, 'F');
+
+  // Logo box
+  doc.setFillColor.apply(doc, ORANGE);
+  doc.roundedRect(PL, 10, 18, 18, 2, 2, 'F');
+  // Ícono capa (simple)
+  doc.setDrawColor(255,255,255);
+  doc.setLineWidth(0.7);
+  doc.line(PL+9, 14, PL+4, 17);  doc.line(PL+4, 17, PL+9, 20);  doc.line(PL+9, 20, PL+14,17); doc.line(PL+14,17,PL+9,14);
+  doc.line(PL+4, 20, PL+9, 23);  doc.line(PL+9, 23, PL+14,20);
+  doc.line(PL+4, 23.5, PL+9, 26.5); doc.line(PL+9, 26.5, PL+14,23.5);
+
+  // Nombre estudio
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor.apply(doc, LIGHT);
+  doc.text(d.studio.toUpperCase(), PL + 22, 18);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor.apply(doc, MID);
+  doc.text('Cotización de impresión 3D · ' + d.ciudad, PL + 22, 24);
+
+  // Fecha y folio
+  var folio = 'COT-' + Date.now().toString().slice(-6);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor.apply(doc, ORANGE);
+  doc.text(folio, W - PR, 16, { align: 'right' });
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor.apply(doc, MID);
+  doc.text(d.fecha, W - PR, 22, { align: 'right' });
+
+  // Línea separadora
+  doc.setDrawColor.apply(doc, GRAY2);
+  doc.setLineWidth(0.3);
+  doc.line(PL, 40, W - PR, 40);
+
+  y = 50;
+
+  // ── Nombre pieza ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor.apply(doc, LIGHT);
+  doc.text(d.nombre === '—' ? 'Pieza sin nombre' : d.nombre, PL, y);
+  y += 6;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor.apply(doc, MID);
+  doc.text('Material: ' + d.mat + '   ·   Peso: ' + d.peso + 'g   ·   Tiempo: ' + d.tiempo + 'h   ·   Cantidad: ' + d.cant + ' pza(s)', PL, y);
+  y += 10;
+
+  // ── Línea naranja decorativa ──
+  doc.setFillColor.apply(doc, ORANGE);
+  doc.rect(PL, y, 30, 0.8, 'F');
+  y += 8;
+
+  // ── Desglose ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor.apply(doc, ORANGE);
+  doc.text('DESGLOSE DE COSTOS', PL, y);
+  y += 6;
+
+  var rows = [
+    ['Material (' + d.mat + ')', fmt(d.cMat)],
+    ['Hora máquina (' + d.tiempo + 'h)', fmt(d.cMaq)],
+  ];
+  if (d.postV   > 0) rows.push(['Postprocesado', fmt(d.postV)]);
+  if (d.envioV  > 0) rows.push(['Envío', fmt(d.envioV)]);
+  if (d.disenoV > 0) rows.push(['Diseño 3D / Modelado', fmt(d.disenoV)]);
+  if (d.urgV    > 0) rows.push(['Cargo por urgencia', fmt(d.urgV)]);
+
+  rows.forEach(function(row, i) {
+    if (i % 2 === 0) {
+      doc.setFillColor(22,22,22);
+      doc.rect(PL, y - 4, CW, 8, 'F');
+    }
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor.apply(doc, MID);
+    doc.text(row[0], PL + 4, y);
+    doc.setTextColor.apply(doc, LIGHT);
+    doc.text(row[1], W - PR - 4, y, { align: 'right' });
+    y += 8;
+  });
+
+  // ── Separador ──
+  doc.setDrawColor(40,40,40);
+  doc.setLineWidth(0.4);
+  doc.line(PL, y, W - PR, y);
+  y += 8;
+
+  // Subtotales
+  var sub2 = [
+    ['Costo base', fmt(d.base)],
+    ['Margen de ganancia (' + d.margenP + '%)', fmt(d.margen)],
+  ];
+  if (d.descP > 0) sub2.push(['Descuento por volumen (' + d.descP + '%)', '−' + fmt(d.descM)]);
+  sub2.push(['Precio unitario', fmt(d.unit)]);
+  sub2.push(['Cantidad', d.cant + (d.cant === 1 ? ' pieza' : ' piezas')]);
+
+  sub2.forEach(function(row) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor.apply(doc, MID);
+    doc.text(row[0], PL + 4, y);
+    doc.setTextColor.apply(doc, LIGHT);
+    doc.text(row[1], W - PR - 4, y, { align: 'right' });
+    y += 8;
+  });
+
+  y += 4;
+
+  // ── TOTAL ──
+  doc.setFillColor.apply(doc, ORANGE);
+  doc.roundedRect(PL, y - 6, CW, 18, 3, 3, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(255,255,255);
+  doc.text('TOTAL A COBRAR', PL + 6, y + 3);
+
+  doc.setFontSize(16);
+  doc.text('$' + Math.round(d.total).toLocaleString('es-MX') + ' MXN', W - PR - 6, y + 4, { align: 'right' });
+
+  y += 26;
+
+  // ── Notas ──
+  doc.setFillColor(20,20,20);
+  doc.roundedRect(PL, y, CW, 28, 2, 2, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor.apply(doc, ORANGE);
+  doc.text('NOTAS', PL + 5, y + 8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor.apply(doc, MID);
+  doc.text('• Cotización válida por 7 días a partir de la fecha de emisión.', PL + 5, y + 15);
+  doc.text('• Los precios pueden variar si se realizan cambios al archivo 3D.', PL + 5, y + 20);
+  doc.text('• Anticipo del 50% para iniciar el pedido. Saldo al entregar.', PL + 5, y + 25);
+
+  y += 36;
+
+  // ── Footer ──
+  doc.setFillColor.apply(doc, GRAY1);
+  doc.rect(0, 257, W, 40, 'F');
+  doc.setDrawColor.apply(doc, ORANGE);
+  doc.setLineWidth(0.6);
+  doc.line(0, 257, W, 257);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor.apply(doc, ORANGE);
+  doc.text(d.studio.toUpperCase(), PL, 268);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor.apply(doc, MID);
+  doc.text(d.ciudad + '   ·   Impresión 3D & Diseño Digital', PL, 274);
+
+  // Folio pequeño en footer
+  doc.setFontSize(7);
+  doc.setTextColor(60,60,60);
+  doc.text(folio + ' · ' + d.fecha, W - PR, 268, { align: 'right' });
+  doc.text('Generado con Cotizador 3D · ' + d.studio, W - PR, 274, { align: 'right' });
+
+  // Guardar
+  var filename = (d.studio + '-' + (d.nombre !== '—' ? d.nombre : 'cotizacion')).replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ\s_-]/g, '').trim() + '.pdf';
+  doc.save(filename);
+  toast('✓ PDF generado');
+}
+
+/* ──────────────────────────────────────────────
+   WHATSAPP
+────────────────────────────────────────────── */
+function generarWA() {
+  if (!lastCalc) return;
+  var d = lastCalc;
+  var estudio = document.getElementById('cfgNombre').value || 'Alebri Studio';
+  var msg = '✨ *Cotización — ' + estudio + '*\n\n';
+  msg += '📦 *Pieza:* ' + (d.nombre !== '—' ? d.nombre : 'Sin nombre') + '\n';
+  msg += '🔧 *Material:* ' + d.mat + '\n';
+  msg += '⚖️ *Peso estimado:* ' + d.peso + 'g\n';
+  msg += '⏱ *Tiempo de impresión:* ' + d.tiempo + 'h\n';
+  msg += '📍 *Cantidad:* ' + d.cant + ' pieza(s)\n\n';
+  var extras = [];
+  if (d.postV   > 0) extras.push('Postprocesado: ' + fmt(d.postV));
+  if (d.envioV  > 0) extras.push('Envío: '         + fmt(d.envioV));
+  if (d.disenoV > 0) extras.push('Diseño 3D: '     + fmt(d.disenoV));
+  if (d.urgV    > 0) extras.push('Urgencia: '      + fmt(d.urgV));
+  if (extras.length) {
+    msg += '🔹 *Servicios adicionales:*\n';
+    extras.forEach(function(e){ msg += '  • ' + e + '\n'; });
+    msg += '\n';
+  }
+  if (d.descP > 0) msg += '🏷 *Descuento volumen (' + d.descP + '%):* −' + fmt(d.descM) + '\n';
+  msg += '💰 *Precio por pieza:* ' + fmt(d.unit) + ' MXN\n';
+  msg += '💵 *TOTAL: $' + Math.round(d.total).toLocaleString('es-MX') + ' MXN*\n\n';
+  msg += '_Cotización válida 7 días · Los precios pueden variar si se modifica el archivo 3D._\n';
+  msg += '_' + estudio + ' · ' + d.ciudad + '_';
+
+  document.getElementById('waText').textContent = msg;
+  document.getElementById('waPreview').classList.remove('hidden');
+}
+
+function copiarWA() {
+  var txt = document.getElementById('waText').textContent;
+  navigator.clipboard.writeText(txt).then(function(){ toast('✓ Mensaje copiado'); }).catch(function(){
+    var t = document.createElement('textarea');
+    t.value = txt; document.body.appendChild(t); t.select(); document.execCommand('copy');
+    document.body.removeChild(t); toast('✓ Mensaje copiado');
+  });
+}
+
+/* ──────────────────────────────────────────────
+   HELPERS
+────────────────────────────────────────────── */
+function fmt(n) {
+  return '$' + (n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function show(id, visible) {
+  document.getElementById(id).classList.toggle('hidden', !visible);
+}
+
+function toast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 2200);
+}
+
+/* ──────────────────────────────────────────────
+   INIT
+────────────────────────────────────────────── */
+onMaterialChange();
+calcular();
+
+// Register Service Worker (PWA)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/sw.js').catch(function(){});
+  });
+}
+</script>
+</body>
+</html>
